@@ -253,3 +253,33 @@ router.post('/login', [
     })
   }
 })
+
+
+
+// Logout 
+router.get("/logout", authenticate, async function (req, res) {
+  try {
+
+    // Deleting current token on logout from database
+    req.rootUser.tokens = req.rootUser.tokens.filter(function (currentToken) {
+      return currentToken.token !== req.token
+    })
+
+    // Cookie expiration
+    await res.cookie("AmazonClone", {
+      expires: Date.now()
+    });
+
+    req.rootUser.save();
+
+    return res.status(201).json({
+      "status": true,
+      "message": "Logged out successfully!"
+    })
+  } catch (error) {
+    res.status(400).json({
+      "status": false,
+      "message": error
+    })
+  }
+})
