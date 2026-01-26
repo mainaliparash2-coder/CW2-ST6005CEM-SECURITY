@@ -376,3 +376,41 @@ router.post("/create-order", authenticate, async function (req, res) {
     });
   }
 });
+router.post("/pay-order", authenticate, async function (req, res) {
+  try {
+    const userInfo = await User.findOne({ _id: req.userId }); // req.UserId from authenticate.js
+
+    const {
+      amount,
+      razorpayPaymentId,
+      razorpayOrderId,
+      razorpaySignature,
+      orderedProducts,
+      dateOrdered,
+    } = req.body;
+    const newOrder = {
+      products: orderedProducts,
+      date: dateOrdered,
+      isPaid: true,
+      amount: amount,
+      razorpay: {
+        orderId: razorpayOrderId,
+        paymentId: razorpayPaymentId,
+        signature: razorpaySignature,
+      },
+    };
+
+    // Saving order model into user model
+    if (userInfo) {
+      await userInfo.addOrder(newOrder);
+    } else {
+      res.status(400).json("Invalid user");
+    }
+
+    res.status(200).json({
+      message: "Payment was successful",
+    });
+  } catch (error) {
+    res.status(400).json(error);
+  }
+});
