@@ -124,7 +124,59 @@ router.post('/register', [
   }
 });
 
+// Verify OTP
+router.post('/verify-otp', async function (req, res) {
+  const { email, otp } = req.body;
 
+  if (!email || !otp) {
+    return res.status(400).json({
+      "status": false,
+      "message": "Email and OTP are required"
+    });
+  }
+
+  try {
+    // Find OTP record
+    const otpRecord = await OTP.findOne({ email: email, otp: otp });
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        "status": false,
+        "message": "Invalid or expired OTP"
+      });
+    }
+
+    // ❌ Update user as verified (but data was already in DB!)
+    const updatedUser = await User.updateOne(
+      { email: email },
+      { $set: { isVerified: true } }
+    );
+
+    if (updatedUser.modifiedCount === 0) {
+      return res.status(400).json({
+        "status": false,
+        "message": "User not found"
+      });
+    }
+
+    // Delete OTP after successful verification
+    await OTP.deleteOne({ email: email });
+
+    console.log(`✅ Email verified for: ${email}`);
+
+    return res.status(200).json({
+      "status": true,
+      "message": "Email verified successfully! You can now login."
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      "status": false,
+      "message": "Verification failed"
+    });
+  }
+});
 
 
 
