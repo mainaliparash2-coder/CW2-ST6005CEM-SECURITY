@@ -283,3 +283,9 @@ router.get("/logout", authenticate, async function (req, res) {
     })
   }
 })
+
+// // Verify if user is logged in
+router.get('/getAuthUser', authenticate, async function (req, res) {
+  const userData = await User.findOne({ _id: req.userId });
+  res.send(userData);
+});
