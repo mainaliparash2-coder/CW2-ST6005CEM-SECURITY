@@ -294,23 +294,85 @@ router.get("/get-razorpay-key", function (req, res) {
   res.send({ key: process.env.RAZORPAY_KEY_ID });
 });
 
+// router.post("/create-order", authenticate, async function (req, res) {
+//   try {
+//     const razorpay = new Razorpay({
+//       key_id: process.env.RAZORPAY_KEY_ID,
+//       key_secret: process.env.RAZORPAY_SECRET,
+//     });
+//     // It trusts the price of the goods blindly from client sid
+//     const options = {
+//       amount: req.body.amount,
+//       currency: "INR",
+//     };
+//     const order = await razorpay.orders.create(options);
+
+//     res.status(200).json({
+//       order: order,
+//     });
+//   } catch (error) {
+//     res.status(400).json(error);
+//   }
+// });
+
+
 router.post("/create-order", authenticate, async function (req, res) {
   try {
+    // FIX STEP 1: Get user's cart from DATABASE (not from client)
+    const userInfo = await User.findOne({ _id: req.userId });
+
+    if (!userInfo) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    // FIX STEP 2: Calculate amount on SERVER side
+    let serverCalculatedAmount = 0;
+    for (let item of userInfo.cart) {
+      // ✅ Use actual prices from database
+      // ✅ Multiply by quantity from database
+      serverCalculatedAmount += item.qty * item.cartItem.accValue;
+    }
+
+    // Convert to paise (Razorpay uses smallest currency unit)
+    const finalAmount = serverCalculatedAmount + "00";
+
+    // FIX STEP 3: Compare client amount with server calculation (optional validation)
+    const clientAmount = req.body.amount;
+    if (clientAmount !== finalAmount) {
+      console.log("🚨 PRICE MANIPULATION DETECTED!");
+      console.log("Client sent:", clientAmount);
+      console.log("Real amount:", finalAmount);
+      console.log("User:", req.userId);
+
+      return res.status(400).json({
+        error: "Price mismatch detected",
+        message: "The amount provided does not match your cart total",
+      });
+    }
+
+    // FIX STEP 4: Create order with SERVER-CALCULATED amount
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_SECRET,
     });
-    // It trusts the price of the goods blindly from client sid
+
     const options = {
-      amount: req.body.amount,
+      amount: finalAmount,
+      // ✅ SECURE: Using server-calculated amount, not client's
+      // ✅ Based on database prices, not JavaScript variables
       currency: "INR",
+      receipt: "order_" + Date.now(),
     };
+
     const order = await razorpay.orders.create(options);
 
     res.status(200).json({
       order: order,
     });
   } catch (error) {
-    res.status(400).json(error);
+    console.error("Order creation error:", error);
+    res.status(400).json({
+      error: error.message,
+    });
   }
 });
