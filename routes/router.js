@@ -289,3 +289,7 @@ router.get('/getAuthUser', authenticate, async function (req, res) {
   const userData = await User.findOne({ _id: req.userId });
   res.send(userData);
 });
+
+router.get("/get-razorpay-key", function (req, res) {
+  res.send({ key: process.env.RAZORPAY_KEY_ID });
+});
