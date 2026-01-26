@@ -180,3 +180,76 @@ router.post('/verify-otp', async function (req, res) {
 
 
 
+// Post registered data / login 
+router.post('/login', [
+  // Check fields validation
+  check('email').not().isEmpty().withMessage("Email can't be empty")
+    .isEmail().withMessage("Email format invalid")
+    .normalizeEmail(),
+
+  check('password').not().isEmpty().withMessage("Password can't be empty")
+    .isLength({ min: 6 }).withMessage("Password must be at least 6 characters long")
+    .matches(/\d/).withMessage("Password must contain a number")
+    .isAlphanumeric().withMessage("Password can only contain alphabets and numbers")
+
+], async function (req, res) {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      "status": false,
+      "message": errors.array()
+    })
+  } else {
+    const { email, password } = req.body;
+    const errors = [];
+
+    // Check if email exists
+    User.findOne({ email: email }, async function (err, found) {
+      if (err) {
+        console.log(err);
+      } else {
+        if (!found) {
+          errors.push({ msg: "Incorrect Email or Password" });
+          return res.status(400).json({
+            "status": false,
+            "message": errors
+          })
+        } else {
+
+
+          // Comparing the password
+          bcrypt.compare(password, found.password, async function (err, result) {
+            if (result) {
+
+              // Token generation
+              const token = await found.generateAuthToken();
+              console.log("Token generated")
+
+              // Cookie generation
+              res.cookie("AmazonClone", token, {
+                expires: new Date(Date.now() + 3600000), // 60 Mins
+                httpOnly: true,
+                strict: true,
+                sameSite: strict
+              });
+
+              return res.status(201).json({
+                "status": true,
+                "message": "Logged in successfully!",
+                "token": token
+              })
+            } else {
+              errors.push({ msg: "Incorrect Email or Password" });
+              return res.status(400).json({
+                "status": false,
+                "message": errors
+              })
+            }
+          });
+
+        }
+      }
+    })
+  }
+})
