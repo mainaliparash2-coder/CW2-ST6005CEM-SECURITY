@@ -293,3 +293,24 @@ router.get('/getAuthUser', authenticate, async function (req, res) {
 router.get("/get-razorpay-key", function (req, res) {
   res.send({ key: process.env.RAZORPAY_KEY_ID });
 });
+
+router.post("/create-order", authenticate, async function (req, res) {
+  try {
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_SECRET,
+    });
+    // It trusts the price of the goods blindly from client sid
+    const options = {
+      amount: req.body.amount,
+      currency: "INR",
+    };
+    const order = await razorpay.orders.create(options);
+
+    res.status(200).json({
+      order: order,
+    });
+  } catch (error) {
+    res.status(400).json(error);
+  }
+});
