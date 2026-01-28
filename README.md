@@ -7,8 +7,8 @@
 **Coventry University ID:** 14188606
 **Student ID:** 230143
 
-**Developed by:** [Parash Maainali]
-(https://github.com/SushantPatial)
+**Developed by:** [Parash Mainali]
+(https://github.com/mainaliparash2-coder/CW2-ST6005CEM-SECURITY)
 
 [![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue?style=flat&logo=github)](https://github.com/mainaliparash2-coder/CW2-ST6005CEM-SECURITY)
 
@@ -217,8 +217,8 @@ Database (MongoDB)
 1. **Clone the repository:**
 
 ```bash
-git clone https://github.com/SushantPatial/Amazon-Clone.git
-cd Amazon-Clone
+git clone https://github.com/mainaliparash2-coder/CW2-ST6005CEM-SECURITY
+cd CW2-ST6005CEM-SECURITY
 ```
 
 2. **Install server dependencies:**
