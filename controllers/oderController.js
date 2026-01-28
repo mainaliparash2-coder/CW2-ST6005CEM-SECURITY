@@ -290,3 +290,109 @@ exports.getOrderStats = async (req, res) => {
     });
   }
 };
+
+// Get revenue analytics
+exports.getRevenueAnalytics = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const matchQuery = { paymentStatus: 'completed' };
+    if (startDate && endDate) {
+      matchQuery.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const dailyRevenue = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const monthlyRevenue = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.status(200).json({
+      status: true,
+      analytics: {
+        daily: dailyRevenue,
+        monthly: monthlyRevenue
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching revenue analytics',
+      error: error.message
+    });
+  }
+};
+
+// Get revenue analytics
+exports.getRevenueAnalytics = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const matchQuery = { paymentStatus: 'completed' };
+    if (startDate && endDate) {
+      matchQuery.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    const dailyRevenue = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    const monthlyRevenue = await Order.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          revenue: { $sum: '$totalAmount' },
+          orders: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.status(200).json({
+      status: true,
+      analytics: {
+        daily: dailyRevenue,
+        monthly: monthlyRevenue
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching revenue analytics',
+      error: error.message
+    });
+  }
+};
