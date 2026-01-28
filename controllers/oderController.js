@@ -146,3 +146,37 @@ exports.updateOrderStatus = async (req, res) => {
     });
   }
 };
+
+
+// Update payment status
+exports.updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentStatus } = req.body;
+
+    const updatedOrder = await Order.findOneAndUpdate(
+      { orderId: id },
+      { $set: { paymentStatus } },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({
+        status: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: 'Payment status updated successfully',
+      order: updatedOrder
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error updating payment status',
+      error: error.message
+    });
+  }
+};
