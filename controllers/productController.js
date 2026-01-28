@@ -73,4 +73,47 @@ exports.getProductById = async (req, res) => {
 };
 
 
+// Create new product
+exports.createProduct = async (req, res) => {
+  try {
+    const { id, url, resUrl, price, value, accValue, discount, mrp, name, points } = req.body;
+
+    // Check if product with same ID exists
+    const existingProduct = await Product.findOne({ id: id });
+    if (existingProduct) {
+      return res.status(400).json({
+        status: false,
+        message: 'Product with this ID already exists'
+      });
+    }
+
+    const newProduct = new Product({
+      id,
+      url,
+      resUrl,
+      price,
+      value,
+      accValue,
+      discount,
+      mrp,
+      name,
+      points: points || []
+    });
+
+    const savedProduct = await newProduct.save();
+
+    res.status(201).json({
+      status: true,
+      message: 'Product created successfully',
+      product: savedProduct
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error creating product',
+      error: error.message
+    });
+  }
+};
+
 
