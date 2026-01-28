@@ -155,3 +155,89 @@ exports.updateProduct = async (req, res) => {
 };
 
 
+
+// Delete product
+exports.deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedProduct = await Product.findOneAndDelete({ id: parseInt(id) });
+
+    if (!deletedProduct) {
+      return res.status(404).json({
+        status: false,
+        message: 'Product not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: 'Product deleted successfully',
+      product: deletedProduct
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error deleting product',
+      error: error.message
+    });
+  }
+};
+
+// Bulk delete products
+exports.bulkDeleteProducts = async (req, res) => {
+  try {
+    const { ids } = req.body; // Array of product IDs
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: 'Please provide an array of product IDs'
+      });
+    }
+
+    const result = await Product.deleteMany({ id: { $in: ids } });
+
+    res.status(200).json({
+      status: true,
+      message: `${result.deletedCount} products deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error deleting products',
+      error: error.message
+    });
+  }
+};
+
+// Get product statistics
+exports.getProductStats = async (req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments();
+    
+    const avgPrice = await Product.aggregate([
+      {
+        $group: {
+          _id: null,
+          averagePrice: { $avg: { $toDouble: "$price" } }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      status: true,
+      stats: {
+        totalProducts,
+        averagePrice: avgPrice[0]?.averagePrice || 0
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching product statistics',
+      error: error.message
+    });
+  }
+};
