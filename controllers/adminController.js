@@ -67,3 +67,57 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+
+// Admin Register (for creating new admins - superadmin only)
+exports.register = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: false,
+        message: errors.array()
+      });
+    }
+
+    const { name, email, password, role } = req.body;
+
+    // Check if admin already exists
+    const existingAdmin = await Admin.findOne({ email });
+    
+    if (existingAdmin) {
+      return res.status(400).json({
+        status: false,
+        message: 'Admin with this email already exists'
+      });
+    }
+
+    // Create new admin
+    const newAdmin = new Admin({
+      name,
+      email,
+      password, // Will be hashed by pre-save middleware
+      role: role || 'admin'
+    });
+
+    await newAdmin.save();
+
+    res.status(201).json({
+      status: true,
+      message: 'Admin created successfully',
+      admin: {
+        id: newAdmin._id,
+        name: newAdmin.name,
+        email: newAdmin.email,
+        role: newAdmin.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Registration failed',
+      error: error.message
+    });
+  }
+};
