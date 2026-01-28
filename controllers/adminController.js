@@ -148,3 +148,21 @@ exports.logout = async (req, res) => {
     });
   }
 };
+
+  // Get current admin profile
+  exports.getProfile = async (req, res) => {
+    try {
+      const admin = await Admin.findById(req.adminId).select('-password -tokens');
+      
+      res.status(200).json({
+        status: true,
+        admin
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: false,
+        message: 'Error fetching profile',
+        error: error.message
+      });
+    }
+  };
