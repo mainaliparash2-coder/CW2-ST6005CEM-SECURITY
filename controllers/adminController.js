@@ -272,3 +272,29 @@ exports.getAllUsers = async (req, res) => {
     });
   }
 };
+
+// Get single user by ID
+exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select('-password -tokens');
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: 'User not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching user',
+      error: error.message
+    });
+  }
+};
