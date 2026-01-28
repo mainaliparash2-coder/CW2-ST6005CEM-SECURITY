@@ -180,3 +180,42 @@ exports.updatePaymentStatus = async (req, res) => {
     });
   }
 };
+// Cancel order
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findOne({ orderId: id });
+
+    if (!order) {
+      return res.status(404).json({
+        status: false,
+        message: 'Order not found'
+      });
+    }
+
+    if (order.orderStatus === 'delivered') {
+      return res.status(400).json({
+        status: false,
+        message: 'Cannot cancel delivered orders'
+      });
+    }
+
+    order.orderStatus = 'cancelled';
+    order.notes = reason || 'Cancelled by admin';
+    await order.save();
+
+    res.status(200).json({
+      status: true,
+      message: 'Order cancelled successfully',
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error cancelling order',
+      error: error.message
+    });
+  }
+};
