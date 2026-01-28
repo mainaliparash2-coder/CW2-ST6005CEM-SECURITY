@@ -416,3 +416,39 @@ exports.toggleAdminStatus = async (req, res) => {
     });
   }
 };
+
+
+// Delete admin
+exports.deleteAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent deleting yourself
+    if (id === req.adminId.toString()) {
+      return res.status(400).json({
+        status: false,
+        message: 'Cannot delete your own account'
+      });
+    }
+
+    const deletedAdmin = await Admin.findByIdAndDelete(id);
+
+    if (!deletedAdmin) {
+      return res.status(404).json({
+        status: false,
+        message: 'Admin not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: 'Admin deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error deleting admin',
+      error: error.message
+    });
+  }
+};
