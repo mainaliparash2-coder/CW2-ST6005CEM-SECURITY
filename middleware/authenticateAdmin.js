@@ -1,14 +1,14 @@
-const jwt = require("jsonwebtoken");
-const Admin = require("../models/Admin");
+const jwt = require('jsonwebtoken');
+const Admin = require('../models/Admin');
 const adminSecretKey = process.env.ADMIN_SECRET_KEY || process.env.SECRET_KEY;
 
-const authenticateAdmin = async function (req, res, next) {
+const authenticateAdmin = async function(req, res, next) {
   try {
     // Check for token in cookie or Authorization header
     let token = req.cookies.AdminToken;
-
+    
     if (!token && req.headers.authorization) {
-      token = req.headers.authorization.replace("Bearer ", "");
+      token = req.headers.authorization.replace('Bearer ', '');
     }
 
     if (!token) {
@@ -24,9 +24,9 @@ const authenticateAdmin = async function (req, res, next) {
     }
 
     // Find admin user
-    const adminUser = await Admin.findOne({
+    const adminUser = await Admin.findOne({ 
       _id: verifyToken._id,
-      isActive: true,
+      isActive: true
     });
 
     if (!adminUser) {
@@ -40,22 +40,23 @@ const authenticateAdmin = async function (req, res, next) {
     req.adminRole = adminUser.role;
 
     next();
+
   } catch (error) {
     res.status(401).json({
       status: false,
       message: "Authentication failed",
-      error: error.message,
-    });
+      error: error.message
+    })
   }
-};
+}
 
 // Middleware to check if admin is superadmin
-const requireSuperAdmin = async function (req, res, next) {
+const requireSuperAdmin = async function(req, res, next) {
   try {
-    if (req.adminRole !== "superadmin") {
+    if (req.adminRole !== 'superadmin') {
       return res.status(403).json({
         status: false,
-        message: "This action requires superadmin privileges",
+        message: "This action requires superadmin privileges"
       });
     }
     next();
@@ -63,9 +64,9 @@ const requireSuperAdmin = async function (req, res, next) {
     res.status(403).json({
       status: false,
       message: "Authorization failed",
-      error: error.message,
-    });
+      error: error.message
+    })
   }
-};
+}
 
 module.exports = { authenticateAdmin, requireSuperAdmin };

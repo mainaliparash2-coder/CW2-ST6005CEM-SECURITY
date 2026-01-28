@@ -1,26 +1,18 @@
-const Product = require("../models/Product");
+const Product = require('../models/Product');
 
 // Get all products with pagination and filters
 exports.getAllProducts = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 20,
-      search = "",
-      sortBy = "id",
-      order = "asc",
-    } = req.query;
+    const { page = 1, limit = 20, search = '', sortBy = 'id', order = 'asc' } = req.query;
+    
+    const query = search ? {
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { id: !isNaN(search) ? parseInt(search) : null }
+      ]
+    } : {};
 
-    const query = search
-      ? {
-          $or: [
-            { name: { $regex: search, $options: "i" } },
-            { id: !isNaN(search) ? parseInt(search) : null },
-          ],
-        }
-      : {};
-
-    const sortOrder = order === "desc" ? -1 : 1;
+    const sortOrder = order === 'desc' ? -1 : 1;
     const sortOptions = { [sortBy]: sortOrder };
 
     const products = await Product.find(query)
@@ -36,16 +28,17 @@ exports.getAllProducts = async (req, res) => {
       products,
       totalPages: Math.ceil(count / limit),
       currentPage: page,
-      totalProducts: count,
+      totalProducts: count
     });
   } catch (error) {
     res.status(500).json({
       status: false,
-      message: "Error fetching products",
-      error: error.message,
+      message: 'Error fetching products',
+      error: error.message
     });
   }
 };
+
 // Get single product by ID
 exports.getProductById = async (req, res) => {
   try {
@@ -71,7 +64,6 @@ exports.getProductById = async (req, res) => {
     });
   }
 };
-
 
 // Create new product
 exports.createProduct = async (req, res) => {
@@ -116,7 +108,6 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-
 // Update product
 exports.updateProduct = async (req, res) => {
   try {
@@ -153,8 +144,6 @@ exports.updateProduct = async (req, res) => {
     });
   }
 };
-
-
 
 // Delete product
 exports.deleteProduct = async (req, res) => {

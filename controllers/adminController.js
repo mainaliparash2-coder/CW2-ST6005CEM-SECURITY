@@ -1,17 +1,17 @@
-const Admin = require("../models/Admin");
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
-const { check, validationResult } = require("express-validator");
+const Admin = require('../models/Admin');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const { check, validationResult } = require('express-validator');
 
 // Admin Login
 exports.login = async (req, res) => {
   try {
     const errors = validationResult(req);
-
+    
     if (!errors.isEmpty()) {
       return res.status(400).json({
         status: false,
-        message: errors.array(),
+        message: errors.array()
       });
     }
 
@@ -19,21 +19,21 @@ exports.login = async (req, res) => {
 
     // Find admin by email
     const admin = await Admin.findOne({ email, isActive: true });
-
+    
     if (!admin) {
       return res.status(401).json({
         status: false,
-        message: "Invalid credentials",
+        message: 'Invalid credentials'
       });
     }
 
     // Compare password
     const isMatch = await admin.comparePassword(password);
-
+    
     if (!isMatch) {
       return res.status(401).json({
         status: false,
-        message: "Invalid credentials",
+        message: 'Invalid credentials'
       });
     }
 
@@ -41,33 +41,32 @@ exports.login = async (req, res) => {
     const token = await admin.generateAuthToken();
 
     // Set cookie
-    res.cookie("AdminToken", token, {
+    res.cookie('AdminToken', token, {
       expires: new Date(Date.now() + 86400000), // 24 hours
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict'
     });
 
     res.status(200).json({
       status: true,
-      message: "Login successful",
+      message: 'Login successful',
       admin: {
         id: admin._id,
         name: admin.name,
         email: admin.email,
-        role: admin.role,
+        role: admin.role
       },
-      token,
+      token
     });
   } catch (error) {
     res.status(500).json({
       status: false,
-      message: "Login failed",
-      error: error.message,
+      message: 'Login failed',
+      error: error.message
     });
   }
 };
-
 
 // Admin Register (for creating new admins - superadmin only)
 exports.register = async (req, res) => {
@@ -122,7 +121,6 @@ exports.register = async (req, res) => {
   }
 };
 
-
 // Admin Logout
 exports.logout = async (req, res) => {
   try {
@@ -167,8 +165,6 @@ exports.logout = async (req, res) => {
     }
   };
 
-
-  
 // Update admin profile
 exports.updateProfile = async (req, res) => {
   try {
@@ -231,7 +227,6 @@ exports.changePassword = async (req, res) => {
     });
   }
 };
-
 
 // ===== User Management =====
 
@@ -299,7 +294,6 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-
 // Get user statistics
 exports.getUserStats = async (req, res) => {
   try {
@@ -363,6 +357,7 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+// ===== Admin Management (Superadmin only) =====
 
 // Get all admins
 exports.getAllAdmins = async (req, res) => {
@@ -416,7 +411,6 @@ exports.toggleAdminStatus = async (req, res) => {
     });
   }
 };
-
 
 // Delete admin
 exports.deleteAdmin = async (req, res) => {
