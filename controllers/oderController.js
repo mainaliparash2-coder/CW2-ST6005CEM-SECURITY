@@ -80,3 +80,25 @@ exports.getOrderById = async (req, res) => {
     });
   }
 };
+
+
+// Get orders by user ID
+exports.getOrdersByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const orders = await Order.find({ userId: userId })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      status: true,
+      orders,
+      totalOrders: orders.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching user orders',
+      error: error.message
+    });
+  }
+};
