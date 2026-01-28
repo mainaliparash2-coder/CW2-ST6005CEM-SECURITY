@@ -2,3 +2,68 @@ const Admin = require("../models/Admin");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const { check, validationResult } = require("express-validator");
+
+// Admin Login
+exports.login = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: false,
+        message: errors.array(),
+      });
+    }
+
+    const { email, password } = req.body;
+
+    // Find admin by email
+    const admin = await Admin.findOne({ email, isActive: true });
+
+    if (!admin) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Compare password
+    const isMatch = await admin.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid credentials",
+      });
+    }
+
+    // Generate token
+    const token = await admin.generateAuthToken();
+
+    // Set cookie
+    res.cookie("AdminToken", token, {
+      expires: new Date(Date.now() + 86400000), // 24 hours
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.status(200).json({
+      status: true,
+      message: "Login successful",
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+      },
+      token,
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: "Login failed",
+      error: error.message,
+    });
+  }
+};
