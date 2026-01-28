@@ -248,3 +248,45 @@ exports.deleteOrder = async (req, res) => {
     });
   }
 };
+
+// Get order statistics
+exports.getOrderStats = async (req, res) => {
+  try {
+    const totalOrders = await Order.countDocuments();
+    const pendingOrders = await Order.countDocuments({ orderStatus: 'pending' });
+    const processingOrders = await Order.countDocuments({ orderStatus: 'processing' });
+    const shippedOrders = await Order.countDocuments({ orderStatus: 'shipped' });
+    const deliveredOrders = await Order.countDocuments({ orderStatus: 'delivered' });
+    const cancelledOrders = await Order.countDocuments({ orderStatus: 'cancelled' });
+
+    const totalRevenue = await Order.aggregate([
+      { $match: { paymentStatus: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+    ]);
+
+    const recentOrders = await Order.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('userId', 'name email');
+
+    res.status(200).json({
+      status: true,
+      stats: {
+        totalOrders,
+        pendingOrders,
+        processingOrders,
+        shippedOrders,
+        deliveredOrders,
+        cancelledOrders,
+        totalRevenue: totalRevenue[0]?.total || 0,
+        recentOrders
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching order statistics',
+      error: error.message
+    });
+  }
+};
