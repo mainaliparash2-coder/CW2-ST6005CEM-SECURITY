@@ -231,3 +231,44 @@ exports.changePassword = async (req, res) => {
     });
   }
 };
+
+
+// ===== User Management =====
+
+// Get all users with pagination
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search = '' } = req.query;
+    
+    const query = search ? {
+      $or: [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { number: { $regex: search, $options: 'i' } }
+      ]
+    } : {};
+
+    const users = await User.find(query)
+      .select('-password -tokens')
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .sort({ _id: -1 })
+      .exec();
+
+    const count = await User.countDocuments(query);
+
+    res.status(200).json({
+      status: true,
+      users,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      totalUsers: count
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching users',
+      error: error.message
+    });
+  }
+};
