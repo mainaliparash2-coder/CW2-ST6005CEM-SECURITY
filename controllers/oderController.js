@@ -102,3 +102,47 @@ exports.getOrdersByUserId = async (req, res) => {
     });
   }
 };
+
+
+// Update order status
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { orderStatus, trackingNumber, notes } = req.body;
+
+    const updateData = {};
+    if (orderStatus) updateData.orderStatus = orderStatus;
+    if (trackingNumber) updateData.trackingNumber = trackingNumber;
+    if (notes) updateData.notes = notes;
+
+    // If status is delivered, set delivery date
+    if (orderStatus === 'delivered') {
+      updateData.deliveryDate = new Date();
+    }
+
+    const updatedOrder = await Order.findOneAndUpdate(
+      { orderId: id },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({
+        status: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: 'Order updated successfully',
+      order: updatedOrder
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error updating order',
+      error: error.message
+    });
+  }
+};
