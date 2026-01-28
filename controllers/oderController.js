@@ -53,3 +53,30 @@ exports.getAllOrders = async (req, res) => {
     });
   }
 };
+
+// Get single order by ID
+exports.getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const order = await Order.findOne({ orderId: id })
+      .populate('userId', 'name email number');
+
+    if (!order) {
+      return res.status(404).json({
+        status: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching order',
+      error: error.message
+    });
+  }
+};
