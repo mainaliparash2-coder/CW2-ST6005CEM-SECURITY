@@ -219,3 +219,32 @@ exports.cancelOrder = async (req, res) => {
     });
   }
 };
+
+
+// Delete order (admin only - for cleanup)
+exports.deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const deletedOrder = await Order.findOneAndDelete({ orderId: id });
+
+    if (!deletedOrder) {
+      return res.status(404).json({
+        status: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: 'Order deleted successfully',
+      order: deletedOrder
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error deleting order',
+      error: error.message
+    });
+  }
+};
