@@ -381,3 +381,38 @@ exports.getAllAdmins = async (req, res) => {
     });
   }
 };
+
+// Toggle admin active status
+exports.toggleAdminStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const admin = await Admin.findById(id);
+
+    if (!admin) {
+      return res.status(404).json({
+        status: false,
+        message: 'Admin not found'
+      });
+    }
+
+    admin.isActive = !admin.isActive;
+    await admin.save();
+
+    res.status(200).json({
+      status: true,
+      message: `Admin ${admin.isActive ? 'activated' : 'deactivated'} successfully`,
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        isActive: admin.isActive
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error updating admin status',
+      error: error.message
+    });
+  }
+};
