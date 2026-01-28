@@ -1,11 +1,10 @@
-const productsData = [
+export const products = [
   {
     id: "1",
     url: "images/products/1.jpg",
     resUrl: "../images/products/1res.jpg",
     price: "₹61,990.00",
     value: "61,990",
-    accValue: "61990",
     discount: "-46%",
     mrp: "₹1,15,668.00",
     name: "Lenovo ThinkBook 14 Intel Core i5 11th Gen 14 inch (35.56cm) FHD IPS Thin & Light Laptop (16GB RAM/512GB SSD/Windows 11 Home/MS Office 2021/FPR/Intel Iris Xe Graphics Mineral Grey/1.4 kg), 20VDA0TLIH",
@@ -23,7 +22,6 @@ const productsData = [
     resUrl: "../images/products/2res.jpg",
     price: "₹39,499.00",
     value: "39,499",
-    accValue: "39499",
     discount: "-47%",
     mrp: "₹74,999.00",
     name: "Samsung Galaxy S20 FE 5G (Cloud Navy, 8GB RAM, 128GB Storage) with No Cost EMI & Additional Exchange Offers",
@@ -42,7 +40,6 @@ const productsData = [
     name: "New Apple AirPods Pro with MagSafe Charging Case",
     resUrl: "../images/products/3res.jpg",
     value: "21,900",
-    accValue: "21900",
     discount: "-12%",
     mrp: "₹24,900.00",
     points: [
@@ -60,7 +57,6 @@ const productsData = [
     name: "boAt Airdopes 121v2 True Wireless Earbuds with Upto 14 Hours Playback, Lightweight Earbuds, 8MM Drivers, LED Indicators and Multifunction Controls(Active Black)",
     resUrl: "../images/products/4res.jpg",
     value: "1,299",
-    accValue: "1299",
     discount: "-57%",
     mrp: "₹2,990.00",
     points: [
@@ -78,7 +74,6 @@ const productsData = [
     name: "Classic Mosquito Net for Double Bed, Embroidery, King Size, Polyester, Strong 30GSM, PVC Coated Steel (L200cm X W200cm X H145cm) Foldable for Double Bed - King Size, Blue",
     resUrl: "../images/products/5res.jpg",
     value: "999",
-    accValue: "999",
     discount: "-50%",
     mrp: "₹2,000.00",
     points: [
@@ -96,7 +91,6 @@ const productsData = [
     name: "crocs Unisex-Adult Bayaband Clog",
     resUrl: "../images/products/6res.jpg",
     value: "2,097",
-    accValue: "2097",
     discount: "-40%",
     mrp: "₹3,495.00",
     points: [
@@ -114,7 +108,6 @@ const productsData = [
     name: "INDO ERA Women's Viscose Embroidered Straight Kurta Palazzo With Dupatta Set",
     resUrl: "../images/products/7res.jpg",
     value: "1,619",
-    accValue: "1619",
     discount: "-60%",
     mrp: "₹3,999.00",
     points: [
@@ -130,7 +123,6 @@ const productsData = [
     name: "QUBO Smart Cam 360 | 1080p Full HD Wi-Fi Camera | Trust of Hero Group | 360° Deg Coverage with Pan & Tilt | Intruder Alarm | Full Color in Low Light | Two Way Talk | Alexa & OK Google | Made in India",
     resUrl: "../images/products/8res.jpg",
     value: "2,884",
-    accValue: "2884",
     discount: "-28%",
     mrp: "₹3,990.00",
     points: [
@@ -148,7 +140,6 @@ const productsData = [
     name: "TIMEX Analog Men's Watch",
     resUrl: "../images/products/9res.jpg",
     value: "1,299",
-    accValue: "1299",
     discount: "-19%",
     mrp: "₹1,595.00",
     points: [
@@ -166,7 +157,6 @@ const productsData = [
     name: "Yogabar Dark Chocolate & Cranberry Muesli 700g - Breakfast Cereal with 83% Nuts & Seeds, Dried Fruits, & Whole Grains - Vegan & Gluten Free Snack",
     resUrl: "../images/products/10res.jpg",
     value: "429",
-    accValue: "429",
     discount: "-14%",
     mrp: "₹499.00",
     points: [
@@ -184,7 +174,6 @@ const productsData = [
     name: "Integriti Men Sweatshirt",
     resUrl: "../images/products/11res.jpg",
     value: "358",
-    accValue: "358",
     discount: "-86%",
     mrp: "₹2,499.00",
     points: [
@@ -202,7 +191,6 @@ const productsData = [
     name: "Harpa Synthetic a-line Dress (GR5759_Navy_Small)",
     resUrl: "../images/products/12res.jpg",
     value: "630",
-    accValue: "630",
     discount: "-70%",
     mrp: "₹2,099.00",
     points: [
@@ -220,7 +208,6 @@ const productsData = [
     name: "boAt Stone 1200 14W Bluetooth Speaker with Upto 9 Hours Battery, RGB LEDs, IPX7 and TWS Feature(Blue)",
     resUrl: "../images/products/13res.jpg",
     value: "3,999",
-    accValue: "3999",
     discount: "-43%",
     mrp: "₹6,990.00",
     points: [
@@ -235,7 +222,6 @@ const productsData = [
     id: "14",
     price: "₹699.00",
     value: "699",
-    accValue: "699",
     discount: "-53%",
     mrp: "₹1,499",
     url: "images/products/14.jpg",
@@ -256,7 +242,6 @@ const productsData = [
     name: "Urban Born Cast Iron Metal Flower vase for Home Decor and Living Room Vintage Antique Decor (Gold, 15 x 15 x 15 cm)",
     resUrl: "../images/products/15res.jpg",
     value: "499",
-    accValue: "499",
     discount: "-50%",
     mrp: "₹1,000.00",
     points: [
@@ -274,7 +259,6 @@ const productsData = [
     name: "Livpure Smart Solid Window Polyester 5 feet Curtains with tieback( Beige ) Set",
     resUrl: "../images/products/16res.jpg",
     value: "999",
-    accValue: "999",
     discount: "-33%",
     mrp: "₹1,499.00",
     points: [
@@ -292,7 +276,6 @@ const productsData = [
     name: "VMPS | Door mats Anti Skid for Home, 40x60 cm Pack of 1 ( Grey ) - Water Absorbent Rugs",
     resUrl: "../images/products/17res.jpg",
     value: "399",
-    accValue: "399",
     discount: "-60%",
     mrp: "₹999.00",
     points: [
@@ -310,7 +293,6 @@ const productsData = [
     name: "Trending Home Collection Cushion Cover with Booti Zari Embroidered Stitched Zippered Cotton Velvet Cushion Cover | 16X16 Inches | Set of 2| (Yellow)",
     resUrl: "../images/products/18res.jpg",
     value: "699",
-    accValue: "699",
     discount: "-42%",
     mrp: "₹1,199.00",
     points: [
@@ -328,7 +310,6 @@ const productsData = [
     name: "NEW LEAF 220 GSM All-Season Printed Super Soft Light Weight Cotton Comforter Set with 1 Bedsheet 2 Pillow Covers (Double, Blue, Orange) -4 Pieces",
     resUrl: "../images/products/19res.jpg",
     value: "1,399",
-    accValue: "1399",
     discount: "-72%",
     mrp: "₹4,999.00",
     points: [
@@ -346,7 +327,6 @@ const productsData = [
     name: "Kaameri Bazaar Bronze Color Metal Bird cage Tea Light Holder with Butter Pot tealight Glass for Home Décor",
     resUrl: "../images/products/20res.jpg",
     value: "329",
-    accValue: "329",
     discount: "-63%",
     mrp: "₹899.00",
     points: [
@@ -364,7 +344,6 @@ const productsData = [
     name: "The Vintage Artefacts Donut White, Ceramic Pot and vase Handcrafted, Round Shaped (vase)",
     resUrl: "../images/products/21res.jpg",
     value: "549",
-    accValue: "549",
     discount: "-63%",
     mrp: "₹1,499.00",
     points: [
@@ -382,7 +361,6 @@ const productsData = [
     name: "JH Gallery Handcrafted and Emboss Painted Colorful Wood Elephant Shape Garden Table (8 Inches Height, Red)",
     resUrl: "../images/products/22res.jpg",
     value: "1,499",
-    accValue: "1499",
     discount: "-44%",
     mrp: "₹1,499.00",
     points: [
@@ -394,5 +372,3 @@ const productsData = [
     ]
   }
 ]
-
-module.exports = productsData;
