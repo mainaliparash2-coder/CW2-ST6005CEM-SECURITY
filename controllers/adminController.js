@@ -197,3 +197,37 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
+
+// Change password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const admin = await Admin.findById(req.adminId);
+    
+    // Verify current password
+    const isMatch = await admin.comparePassword(currentPassword);
+    
+    if (!isMatch) {
+      return res.status(400).json({
+        status: false,
+        message: 'Current password is incorrect'
+      });
+    }
+
+    // Update password
+    admin.password = newPassword; // Will be hashed by pre-save middleware
+    await admin.save();
+
+    res.status(200).json({
+      status: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error changing password',
+      error: error.message
+    });
+  }
+};
