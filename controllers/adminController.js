@@ -362,3 +362,22 @@ exports.deleteUser = async (req, res) => {
     });
   }
 };
+
+
+// Get all admins
+exports.getAllAdmins = async (req, res) => {
+  try {
+    const admins = await Admin.find().select('-password -tokens');
+
+    res.status(200).json({
+      status: true,
+      admins
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching admins',
+      error: error.message
+    });
+  }
+};
