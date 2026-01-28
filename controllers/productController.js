@@ -117,3 +117,41 @@ exports.createProduct = async (req, res) => {
 };
 
 
+// Update product
+exports.updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Don't allow changing the product ID
+    delete updateData.id;
+    delete updateData._id;
+
+    const updatedProduct = await Product.findOneAndUpdate(
+      { id: parseInt(id) },
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedProduct) {
+      return res.status(404).json({
+        status: false,
+        message: 'Product not found'
+      });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: 'Product updated successfully',
+      product: updatedProduct
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error updating product',
+      error: error.message
+    });
+  }
+};
+
+
