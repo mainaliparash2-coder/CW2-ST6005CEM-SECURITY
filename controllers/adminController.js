@@ -166,3 +166,34 @@ exports.logout = async (req, res) => {
       });
     }
   };
+
+
+  
+// Update admin profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    const updateData = {};
+    
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+
+    const admin = await Admin.findByIdAndUpdate(
+      req.adminId,
+      { $set: updateData },
+      { new: true }
+    ).select('-password -tokens');
+
+    res.status(200).json({
+      status: true,
+      message: 'Profile updated successfully',
+      admin
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error updating profile',
+      error: error.message
+    });
+  }
+};
