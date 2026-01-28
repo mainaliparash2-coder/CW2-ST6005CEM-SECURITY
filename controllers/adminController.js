@@ -121,3 +121,30 @@ exports.register = async (req, res) => {
     });
   }
 };
+
+
+// Admin Logout
+exports.logout = async (req, res) => {
+  try {
+    // Remove current token
+    req.adminUser.tokens = req.adminUser.tokens.filter(
+      tokenObj => tokenObj.token !== req.token
+    );
+    
+    await req.adminUser.save();
+
+    // Clear cookie
+    res.clearCookie('AdminToken');
+
+    res.status(200).json({
+      status: true,
+      message: 'Logout successful'
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Logout failed',
+      error: error.message
+    });
+  }
+};
