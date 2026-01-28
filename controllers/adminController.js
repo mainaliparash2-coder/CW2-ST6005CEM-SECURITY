@@ -298,3 +298,40 @@ exports.getUserById = async (req, res) => {
     });
   }
 };
+
+
+// Get user statistics
+exports.getUserStats = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    
+    const usersWithOrders = await User.countDocuments({
+      'orders.0': { $exists: true }
+    });
+
+    const usersWithCart = await User.countDocuments({
+      'cart.0': { $exists: true }
+    });
+
+    const recentUsers = await User.find()
+      .select('-password -tokens')
+      .sort({ _id: -1 })
+      .limit(10);
+
+    res.status(200).json({
+      status: true,
+      stats: {
+        totalUsers,
+        usersWithOrders,
+        usersWithCart,
+        recentUsers
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Error fetching user statistics',
+      error: error.message
+    });
+  }
+};
