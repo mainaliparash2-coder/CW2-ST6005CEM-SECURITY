@@ -1,9 +1,9 @@
-import InventoryIcon from "@mui/icons-material/Inventory";
-import PeopleIcon from "@mui/icons-material/People";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { useEffect, useState } from "react";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import PeopleIcon from "@mui/icons-material/People";
 import "./admin.css";
 
 const Dashboard = () => {
@@ -25,7 +25,7 @@ const Dashboard = () => {
     try {
       const response = await axios.get(
         "http://localhost:5000/api/admin/dashboard/stats",
-        { withCredentials: true }
+        { withCredentials: true },
       );
 
       if (response.data.status) {
@@ -72,6 +72,15 @@ const Dashboard = () => {
   if (loading) {
     return <div className="admin-loading">Loading dashboard...</div>;
   }
+  const clearLoginBlocks = async () => {
+    await axios.post(
+      "http://localhost:5000/api/admin/unblock-login",
+      { ip: "127.0.0.1" },
+      { withCredentials: true },
+    );
+
+    alert("Login blocks cleared");
+  };
 
   return (
     <div className="admin-dashboard">
@@ -156,6 +165,7 @@ const Dashboard = () => {
             </tbody>
           </table>
         </div>
+        <button onClick={clearLoginBlocks}>Clear Login Blocks</button>
       </div>
     </div>
   );

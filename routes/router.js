@@ -7,21 +7,31 @@ const bcrypt = require("bcryptjs");
 const authenticate = require("../middleware/authenticate");
 const { check, validationResult } = require("express-validator");
 const loginLimiter = require("../middleware/rateLimitor");
-const OTP = require("../models/Otp");
 const { sendOTP } = require("../services/emailService");
 const PendingUser = require("../models/PendingUser");
-// Get products API
+
+const getClientIp = require("../utils/getClientIp");
+const {
+  checkBlocked,
+  recordFailedAttempt,
+  resetAttempts,
+} = require("../utils/bruteForce");
+
+// ===========================
+// PRODUCTS
+// ===========================
 router.get("/products", async function (req, res) {
   try {
-    // Fetching data from database
     const productsData = await Product.find();
     res.status(200).json(productsData);
   } catch (error) {
     console.log(error);
+    return res
+      .status(500)
+      .json({ status: false, message: "Failed to fetch products" });
   }
 });
 
-// Get individual data
 router.get("/product/:id", async function (req, res) {
   try {
     const { id } = req.params;
@@ -29,14 +39,49 @@ router.get("/product/:id", async function (req, res) {
     res.status(200).json(individualData);
   } catch (error) {
     console.log(error);
+    return res
+      .status(500)
+      .json({ status: false, message: "Failed to fetch product" });
   }
 });
 
-// Post register data
+// ===========================
+// REGISTER (BUGGY vs FIXED)
+// ===========================
+
+/*
+BUGGY IDEA (for demonstration):
+- Creates user directly in User collection before OTP is verified.
+- If user never verifies OTP, unverified accounts still exist in DB.
+
+Example buggy flow:
+1) Create User right away (isVerified: false)
+2) Send OTP
+3) Later update isVerified=true after OTP match
+*/
+
+// router.post("/register", [...validators], async function(req,res){
+//   // ...validate
+//   const { name, number, email, password } = req.body;
+//   const hashed = await bcrypt.hash(password, await bcrypt.genSalt(10));
+//
+//   // ❌ BUG: user saved BEFORE OTP verification
+//   await User.create({
+//     name, number, email,
+//     password: hashed,
+//     isVerified: false
+//   });
+//
+//   const otp = generateOtp();
+//   await OTP.create({ email, otp }); // OTP model usage
+//   await sendOTP(email, otp);
+//
+//   return res.status(201).json({ status:true, message:"OTP sent" });
+// });
+
 router.post(
   "/register",
   [
-    // Check Validation of Fields
     check("name")
       .not()
       .isEmpty()
@@ -53,11 +98,6 @@ router.post(
       .isLength({ max: 10, min: 10 })
       .withMessage("Number must consist of 10 digits"),
 
-    // check('password').not().isEmpty().withMessage("Password can't be empty")
-    //   .isLength({ min: 6 }).withMessage("Password must be at least 6 characters long")
-    //   .matches(/\d/).withMessage("Password must contain a number")
-    //   .isAlphanumeric().withMessage("Password can only contain alphabets and numbers"),
-    // FIXED: STRONG PASSWORD VALIDATION
     check("password")
       .not()
       .isEmpty()
@@ -94,106 +134,113 @@ router.post(
         status: false,
         message: errors.array(),
       });
-    } else {
-      const { name, number, email, password, confirmPassword } = req.body;
-      const errors = [];
-
-      // Check Duplicate Emails
-      User.findOne({ email: email }, function (err, duplicateEmail) {
-        if (err) {
-          console.log(err);
-        } else {
-          if (duplicateEmail) {
-            errors.push({ msg: "Please Check Your Credentials Below" });
-            return res.status(400).json({
-              status: false,
-              message: errors,
-            });
-          } else {
-            // Check Duplicate Numbers
-            User.findOne(
-              { number: number },
-              async function (err, duplicateNumber) {
-                if (err) {
-                  console.log(err);
-                } else {
-                  if (duplicateNumber) {
-                    errors.push({ msg: "Invalid Data" });
-                    return res.status(400).json({
-                      status: false,
-                      message: errors,
-                    });
-                  } else {
-                    // Check if Passwords Match
-                    if (password != confirmPassword) {
-                      errors.push({ msg: "Passwords don't match" });
-                      return res.status(400).json({
-                        status: false,
-                        message: errors,
-                      });
-                    } else {
-                      // Hashing the password
-                      const saltRounds = 10;
-                      const salt = await bcrypt.genSalt(saltRounds);
-                      const hashedPassword = await bcrypt.hash(password, salt);
-
-                      // //buggy code > created user beore otp was verified
-                      // const newUser = new User({
-                      //   name: name,
-                      //   number: number,
-                      //   email: email,
-                      //   password: hashedPassword
-                      // })
-
-                      // const savedUser = await newUser.save();
-                      // res.status(201).json(savedUser);
-
-                      //after fixing otp
-                      const otpCode = Math.floor(
-                        100000 + Math.random() * 900000
-                      ).toString();
-
-                      await PendingUser.create({
-                        name,
-                        number,
-                        email,
-                        password: hashedPassword,
-                        otp: otpCode,
-                        otpExpiry: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
-                      });
-
-                      await sendOTP(email, otpCode);
-
-                      return res.status(201).json({
-                        status: true,
-                        message: "OTP sent. Verify to complete registration.",
-                        email,
-                      });
-                    }
-                  }
-                }
-              }
-            );
-          }
-        }
-      });
     }
-  }
+
+    const { name, number, email, password, confirmPassword } = req.body;
+    const errArr = [];
+
+    try {
+      const duplicateEmail = await User.findOne({ email });
+      if (duplicateEmail) {
+        errArr.push({ msg: "Please Check Your Credentials Below" });
+        return res.status(400).json({ status: false, message: errArr });
+      }
+
+      const duplicateNumber = await User.findOne({ number });
+      if (duplicateNumber) {
+        errArr.push({ msg: "Invalid Data" });
+        return res.status(400).json({ status: false, message: errArr });
+      }
+
+      if (password !== confirmPassword) {
+        errArr.push({ msg: "Passwords don't match" });
+        return res.status(400).json({ status: false, message: errArr });
+      }
+
+      // Prevent multiple pending entries for same email
+      await PendingUser.deleteMany({ email });
+
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // ✅ FIX: store in PendingUser, not in User, until OTP verified
+      await PendingUser.create({
+        name,
+        number,
+        email,
+        password: hashedPassword,
+        otp: otpCode,
+        otpExpiry: new Date(Date.now() + 5 * 60 * 1000),
+      });
+
+      await sendOTP(email, otpCode);
+
+      return res.status(201).json({
+        status: true,
+        message: "OTP sent. Verify to complete registration.",
+        email,
+      });
+    } catch (error) {
+      console.error(error);
+      return res
+        .status(500)
+        .json({ status: false, message: "Registration failed" });
+    }
+  },
 );
+
+// ===========================
+// VERIFY OTP (BUGGY vs FIXED)
+// ===========================
+
+/*
+BUGGY IDEA (for demonstration):
+- Only updates isVerified=true for an already-created User.
+- This assumes user was saved before OTP verification, which is not ideal.
+
+Example buggy verify:
+1) Check OTP
+2) Update User.isVerified=true
+3) Delete OTP
+*/
+
+// router.post("/verify-otp", async (req,res)=>{
+//   const { email, otp } = req.body;
+//   const otpRecord = await OTP.findOne({ email, otp });
+//   if (!otpRecord) return res.status(400).json({ status:false, message:"Invalid OTP" });
+//
+//   // ❌ BUG: user data already existed even before verification
+//   await User.updateOne({ email }, { $set: { isVerified:true } });
+//   await OTP.deleteOne({ email });
+//   return res.json({ status:true, message:"Verified" });
+// });
+
 router.post("/verify-otp", async function (req, res) {
   const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res
+      .status(400)
+      .json({ status: false, message: "Email and OTP are required" });
+  }
 
   try {
     const pending = await PendingUser.findOne({ email, otp });
 
-    if (!pending) {
+    if (
+      !pending ||
+      (pending.otpExpiry && pending.otpExpiry.getTime() < Date.now())
+    ) {
+      await PendingUser.deleteOne({ email });
       return res.status(400).json({
         status: false,
         message: "Invalid or expired OTP",
       });
     }
 
-    // Now create the real user
+    // ✅ FIX: create real user only after OTP is verified
     const newUser = new User({
       name: pending.name,
       number: pending.number,
@@ -204,8 +251,6 @@ router.post("/verify-otp", async function (req, res) {
     });
 
     await newUser.save();
-
-    // Delete pending record
     await PendingUser.deleteOne({ email });
 
     return res.status(200).json({
@@ -218,90 +263,31 @@ router.post("/verify-otp", async function (req, res) {
   }
 });
 
-// Post registered data / login
-// router.post('/login', loginLimiter, [
-//   // Check fields validation
-//   check('email').not().isEmpty().withMessage("Email can't be empty")
-//     .isEmail().withMessage("Email format invalid")
-//     .normalizeEmail(),
+// ===========================
+// LOGIN (BUGGY vs FIXED)
+// ===========================
 
-//   // check('password').not().isEmpty().withMessage("Password can't be empty")
-//   //                 .isLength({min: 6}).withMessage("Password must be at least 6 characters long")
-//   //                 .matches(/\d/).withMessage("Password must contain a number")
-//   //                 .isAlphanumeric().withMessage("Password can only contain alphabets and numbers")
-//   // FIXED: STRONG PASSWORD VALIDATION
-//   check('password')
-//     .not().isEmpty().withMessage("Password can't be empty")
-//     .isLength({ min: 8 }).withMessage("Password must be at least 8 characters long")
-//     .matches(/[a-z]/).withMessage("Password must contain at least one lowercase letter")
-//     .matches(/[A-Z]/).withMessage("Password must contain at least one uppercase letter")
-//     .matches(/[0-9]/).withMessage("Password must contain at least one number")
-//     .matches(/[@$!%*?&#]/).withMessage("Password must contain at least one special character"),
+/*
+BUGGY IDEA (for demonstration):
+- No brute-force protection (only basic limiter)
+- Cookie not hardened with secure + sameSite
+- May allow repeated password guessing
 
-// ], async function (req, res) {
-//   const errors = validationResult(req);
+Example buggy login:
+1) find user
+2) compare password
+3) set cookie (httpOnly only)
+*/
 
-//   if (!errors.isEmpty()) {
-//     return res.status(400).json({
-//       "status": false,
-//       "message": errors.array()
-//     })
-//   } else {
-//     const { email, password } = req.body;
-//     const errors = [];
-
-//     // Check if email exists
-//     User.findOne({ email: email }, async function (err, found) {
-//       if (err) {
-//         console.log(err);
-//       } else {
-//         if (!found) {
-//           errors.push({ msg: "Incorrect Email or Password" });
-//           return res.status(400).json({
-//             "status": false,
-//             "message": errors
-//           })
-
-//         } else {
-//           // Comparing the password
-//           bcrypt.compare(password, found.password, async function (err, result) {
-//             if (result) {
-
-//               // Token generation
-//               const token = await found.generateAuthToken();
-
-//               // Cookie generation
-//               res.cookie("AmazonClone", token, {
-//                 expires: new Date(Date.now() + 3600000), // 60 Mins
-//                 httpOnly: true,
-
-//               });
-
-//               //  res.cookie("AmazonClone", token, {
-//               //   expires: new Date(Date.now() + 3600000), // 60 Mins
-//               //   httpOnly: true,
-//               //   secure: true,      // only works on HTTPS
-//               //   sameSite: "strict" // prevents cross-site attacks
-//               // });
-
-//               return res.status(201).json({
-//                 "status": true,
-//                 "message": "Logged in successfully!"
-//               })
-//             } else {
-//               errors.push({ msg: "Incorrect Email or Password" });
-//               return res.status(400).json({
-//                 "status": false,
-//                 "message": errors
-//               })
-//             }
-//           });
-
-//         }
-//       }
-//     })
-//   }
-// })
+// router.post("/login", loginLimiter, [...validators], async (req,res)=>{
+//   const found = await User.findOne({ email });
+//   if (!found) return res.status(400).json({ status:false, message:"Invalid" });
+//   const ok = await bcrypt.compare(password, found.password);
+//   if (!ok) return res.status(400).json({ status:false, message:"Invalid" });
+//   const token = await found.generateAuthToken();
+//   res.cookie("AmazonClone", token, { httpOnly:true });
+//   return res.status(201).json({ status:true, message:"Logged in" });
+// });
 
 router.post(
   "/login",
@@ -340,20 +326,28 @@ router.post(
     }
 
     const { email, password } = req.body;
-    const errorArr = [];
+    const ip = getClientIp(req);
 
     try {
-      const found = await User.findOne({ email });
-
-      if (!found) {
-        errorArr.push({ msg: "Invalid Credentials" });
-        return res.status(400).json({
+      // ✅ FIX: brute-force blocking
+      const blocked = await checkBlocked(ip, email);
+      if (blocked) {
+        return res.status(429).json({
           status: false,
-          message: errorArr,
+          message: [{ msg: "Too many login attempts. Try again later." }],
         });
       }
 
-      // ✅ FIX: Block unverified users
+      const found = await User.findOne({ email });
+
+      if (!found) {
+        await recordFailedAttempt(ip, email);
+        return res.status(400).json({
+          status: false,
+          message: [{ msg: "Invalid Credentials" }],
+        });
+      }
+
       if (!found.isVerified) {
         return res.status(403).json({
           status: false,
@@ -364,30 +358,24 @@ router.post(
       const isMatch = await bcrypt.compare(password, found.password);
 
       if (!isMatch) {
-        errorArr.push({ msg: "Invalid Credentials" });
+        await recordFailedAttempt(ip, email);
         return res.status(400).json({
           status: false,
-          message: errorArr,
+          message: [{ msg: "Invalid Credentials" }],
         });
       }
 
-      // Generate JWT token
+      await resetAttempts(ip, email);
+
       const token = await found.generateAuthToken();
 
-      // ✅ Safer cookie
+      // ✅ FIX: hardened cookie (same domain safe)
       res.cookie("AmazonClone", token, {
-        expires: new Date(Date.now() + 60 * 60 * 1000), // 60 minutes
+        expires: new Date(Date.now() + 60 * 60 * 1000),
         httpOnly: true,
-        //       secure: true,
-        // sameSite: "none"
+        secure: true,
+        sameSite: "strict",
       });
-
-      //  res.cookie("AmazonClone", token, {
-      //   expires: new Date(Date.now() + 3600000), // 60 Mins
-      //   httpOnly: true,
-      //   secure: true,      // only works on HTTPS por env production
-      //   sameSite: "strict" // prevents cross-site attacks
-      // });
 
       return res.status(201).json({
         status: true,
@@ -400,79 +388,55 @@ router.post(
         message: "Login failed",
       });
     }
-  }
+  },
 );
 
-// Adding items to cart
-//bug
-// router.post('/addtocart/:id', authenticate, async function(req, res) {
-//   try {
-//     const {id} = req.params; // Getting id from url parameters
-//     const productInfo = await Product.findOne({ id: id });
-//     // console.log(productInfo);
+// ===========================
+// ADD TO CART (BUGGY vs FIXED)
+// ===========================
 
-//     const userInfo = await User.findOne({ _id: req.userId }); // req.UserId from authenticate.js
-//     // console.log(userInfo);
+/*
+BUGGY IDEA (for demonstration):
+- Update query missing user constraint could update wrong user's cart in some cases.
 
-//     if (userInfo) {
-//       let flag = true;
+Example buggy update:
+await User.updateOne({ "cart.id": id }, { $inc: { "cart.$.qty": 1 } });
+*/
 
-//       for (let i = 0; i < userInfo.cart.length; i++) {
-//         // Incrementing qty by one if product already exists in cart
-//         if (userInfo.cart[i].id == id) {
-//           const test = await User.updateOne({ 'cart.id': id }, {
-//             $inc: {
-//               'cart.$.qty': 1
-//             }
-//           });
-//           console.log(test);
-//           flag = false;
-//         }
-//       }
-
-//       if (flag) { // flag = true means the product is not in the cart
-//         await userInfo.addToCart(id, productInfo); // Adding new product into cart
-//       }
-
-//       // const cartData = await userInfo.addToCart(id, productInfo);
-//       // await userInfo.save();
-//       // console.log(cartData);
-//       res.status(201).json({
-//         status: true,
-//         message: userInfo
-//       })
-//     } else {
-//       res.status(400).json({
-//         status: false,
-//         message: "Invalid User"
-//       })
+// router.post("/addtocart/:id", authenticate, async (req,res)=>{
+//   const id = req.params.id;
+//   const product = await Product.findOne({ id });
+//   const userInfo = await User.findOne({ _id: req.userId });
+//   for (let i=0;i<userInfo.cart.length;i++){
+//     if (userInfo.cart[i].id == id) {
+//       // ❌ BUG: missing _id: req.userId constraint
+//       await User.updateOne({ "cart.id": id }, { $inc: { "cart.$.qty": 1 } });
 //     }
-
-//   } catch (error) {
-//     console.log(error);
 //   }
-// })
+// });
 
-//fixed
 router.post("/addtocart/:id", authenticate, async function (req, res) {
   try {
     const { id } = req.params;
     const productInfo = await Product.findOne({ id });
 
+    if (!productInfo) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Product not found" });
+    }
+
     const user = await User.findById(req.userId);
     const itemExists = user.cart.find((item) => item.id == id);
 
     if (itemExists) {
+      // ✅ FIX: constrain update to the authenticated user's document
       await User.updateOne(
-        { _id: req.userId, "cart.id": id }, // this line fixes the bug
-        { $inc: { "cart.$.qty": 1 } }
+        { _id: req.userId, "cart.id": id },
+        { $inc: { "cart.$.qty": 1 } },
       );
     } else {
-      user.cart.push({
-        id,
-        qty: 1,
-        cartItem: productInfo,
-      });
+      user.cart.push({ id, qty: 1, cartItem: productInfo });
       await user.save();
     }
 
@@ -498,8 +462,6 @@ router.delete("/delete/:id", authenticate, async function (req, res) {
       status: true,
       message: "Item deleted successfully",
     });
-
-    console.log(userData);
   } catch (error) {
     res.status(400).json({
       status: false,
@@ -511,19 +473,12 @@ router.delete("/delete/:id", authenticate, async function (req, res) {
 // Logout
 router.get("/logout", authenticate, async function (req, res) {
   try {
-    // Deleting current token on logout from database
     req.rootUser.tokens = req.rootUser.tokens.filter(function (currentToken) {
       return currentToken.token !== req.token;
     });
 
-    // Cookie expiration
-    // await res.cookie("AmazonClone", {
-    //   expires: Date.now()
-    // });
-
     await res.clearCookie("AmazonClone");
-
-    req.rootUser.save();
+    await req.rootUser.save();
 
     return res.status(201).json({
       status: true,
@@ -541,7 +496,6 @@ router.get("/logout", authenticate, async function (req, res) {
 router.get("/getAuthUser", authenticate, async function (req, res) {
   const userData = await User.findOne({ _id: req.userId });
   res.send(userData);
-  // res.send({ status: true, message: "User is authenticated" });
 });
 
 // Razorpay
@@ -549,56 +503,56 @@ router.get("/get-razorpay-key", function (req, res) {
   res.send({ key: process.env.RAZORPAY_KEY_ID });
 });
 
-//buggy code
-// router.post("/create-order", authenticate, async function(req, res) {
-//   try {
-//     const razorpay = new Razorpay({
-//       key_id: process.env.RAZORPAY_KEY_ID,
-//       key_secret: process.env.RAZORPAY_SECRET
-//     })
-//     const options = {
-//       amount: req.body.amount,
-//       currency: 'INR'
-//     }
-//     const order = await razorpay.orders.create(options);
+// ===========================
+// CREATE ORDER (BUGGY vs FIXED)
+// ===========================
 
-//     res.status(200).json({
-//       order: order
-//     });
+/*
+BUGGY IDEA (for demonstration):
+- Trusts amount sent from client (price manipulation possible)
 
-//   } catch (error) {
-//     res.status(400).json(error);
-//   }
-// })
+Example buggy:
+const options = { amount: req.body.amount, currency:"INR" };
+*/
 
-//fixed code
-// Replace your /create-order route in router.js with this:
+// router.post("/create-order", authenticate, async (req,res)=>{
+//   const razorpay = new Razorpay({ key_id:..., key_secret:... });
+//   const options = { amount: req.body.amount, currency: "INR" }; // ❌ BUG
+//   const order = await razorpay.orders.create(options);
+//   res.json({ order });
+// });
 
 router.post("/create-order", authenticate, async function (req, res) {
   try {
-    // Get user's cart from database
     const userInfo = await User.findOne({ _id: req.userId });
 
     if (!userInfo) {
       return res.status(400).json({ error: "User not found" });
     }
 
-    // Calculate amount from DATABASE (not from client)
     let serverCalculatedAmount = 0;
     for (let item of userInfo.cart) {
       if (item.cartItem) {
-        // Try accValue first, fallback to price
-        let itemPrice =
+        const itemPrice =
           item.cartItem.accValue ||
-          parseFloat(item.cartItem.price.replace(/,/g, ""));
+          parseFloat(String(item.cartItem.price || "0").replace(/,/g, ""));
         serverCalculatedAmount += item.qty * itemPrice;
       }
     }
 
-    // Convert to paise
-    const finalAmount = serverCalculatedAmount * 100;
+    const finalAmount = Math.round(serverCalculatedAmount * 100);
 
-    // Create Razorpay order with server-calculated amount
+    // Optional mismatch detection
+    if (req.body.amount != null) {
+      const clientAmount = Number(req.body.amount);
+      if (!Number.isNaN(clientAmount) && clientAmount !== finalAmount) {
+        return res.status(400).json({
+          error: "Price mismatch detected",
+          message: "The amount provided does not match your cart total",
+        });
+      }
+    }
+
     const razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
       key_secret: process.env.RAZORPAY_SECRET,
@@ -612,22 +566,16 @@ router.post("/create-order", authenticate, async function (req, res) {
 
     const order = await razorpay.orders.create(options);
 
-    res.status(200).json({
-      order: order,
-    });
+    res.status(200).json({ order });
   } catch (error) {
     console.error("Order creation error:", error);
-    res.status(400).json({
-      error: error.message,
-    });
+    res.status(400).json({ error: error.message });
   }
 });
 
-// Replace your /create-order and /pay-order routes with this simple COD version:
-
+// COD order
 router.post("/place-order-cod", authenticate, async function (req, res) {
   try {
-    // Get user's cart from database
     const userInfo = await User.findOne({ _id: req.userId });
 
     if (!userInfo) {
@@ -638,15 +586,14 @@ router.post("/place-order-cod", authenticate, async function (req, res) {
       return res.status(400).json({ error: "Cart is empty" });
     }
 
-    // Calculate amount from DATABASE
     let totalAmount = 0;
     const orderedProducts = [];
 
     for (let item of userInfo.cart) {
       if (item.cartItem) {
-        let itemPrice =
+        const itemPrice =
           item.cartItem.accValue ||
-          parseFloat(item.cartItem.price.replace(/,/g, ""));
+          parseFloat(String(item.cartItem.price || "0").replace(/,/g, ""));
         totalAmount += item.qty * itemPrice;
 
         orderedProducts.push({
@@ -659,21 +606,18 @@ router.post("/place-order-cod", authenticate, async function (req, res) {
       }
     }
 
-    // Create order object
     const newOrder = {
-      orderId: "ORD" + Date.now(), // Simple order ID
+      orderId: "ORD" + Date.now(),
       orderInfo: {
         date: new Date().toLocaleDateString(),
-        amount: totalAmount * 100, // Store in paise for consistency
+        amount: Math.round(totalAmount * 100),
         paymentMethod: "COD",
       },
       products: orderedProducts,
     };
 
-    // Add order to user's orders array
     await userInfo.addOrder(newOrder);
 
-    // Clear the cart
     userInfo.cart = [];
     await userInfo.save();
 
@@ -693,7 +637,7 @@ router.post("/place-order-cod", authenticate, async function (req, res) {
 
 router.post("/pay-order", authenticate, async function (req, res) {
   try {
-    const userInfo = await User.findOne({ _id: req.userId }); // req.UserId from authenticate.js
+    const userInfo = await User.findOne({ _id: req.userId });
 
     const {
       amount,
@@ -703,6 +647,7 @@ router.post("/pay-order", authenticate, async function (req, res) {
       orderedProducts,
       dateOrdered,
     } = req.body;
+
     const newOrder = {
       products: orderedProducts,
       date: dateOrdered,
@@ -715,11 +660,10 @@ router.post("/pay-order", authenticate, async function (req, res) {
       },
     };
 
-    // Saving order model into user model
     if (userInfo) {
       await userInfo.addOrder(newOrder);
     } else {
-      res.status(400).json("Invalid user");
+      return res.status(400).json("Invalid user");
     }
 
     res.status(200).json({
